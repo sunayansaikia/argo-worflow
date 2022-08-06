@@ -1,0 +1,49 @@
+# This nginx sample WorkflowTemplate creates a k8s pod with a service over it.
+# The service account that argo workflow uses to run this must have permissions to create, delete, and get resources.
+# e.g. kubectl create rolebinding default-admin --clusterrole=admin --serviceaccount=argo:default -n argo
+# Here, 'argo' in service account is the namespace and 'default' is the user.
+# The service account here is getting cluster role of 'admin' privilege.
+
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: service-nginx
+spec:
+  entrypoint: create-pod-service
+
+  templates:
+    - name: create-pod-service
+      steps:
+        - - name: create-service
+            template: create-service
+          - name: create-pod
+            template: create-pod
+
+    - name: create-service
+      resource:
+        action: create
+        setOwnerReference: true
+        manifest: |
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: nginx-svc
+            labels:
+              app: nginx
+          spec:
+            type: NodePort
+            ports:
+              - port: 80
+                targetPort: 80
+                nodePort: 30007 
+            selector:
+              app: nginx
+
+    - name: create-pod
+      container:
+        image: nginx
+        name: mginx
+      metadata:
+        labels:
+          app: nginx
+      
